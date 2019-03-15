@@ -10,24 +10,33 @@ module Hand
   end
 
   def total
+    total = uncorrected_total
+    if total > 21 && @hand.map(&:value).include?('Ace')
+      total = ace_correction(total)
+    end
+    total
+  end
+
+  def uncorrected_total
     values = @hand.map do |card|
       if %w(Jack Queen King).include?(card.value)
         10
-      elsif (2..10).include?(card.value.to_i)
+      elsif (2..10).cover?(card.value.to_i)
         card.value.to_i
-      elsif (card.value) == 'Ace'
+      elsif card.value == 'Ace'
         11
       end
     end
-    values = values.inject(:+)
-    if values > 21 && @hand.map(&:value).include?('Ace')
-      @hand.map(&:value).count('Ace').times do
-        if values > 21
-          values -= 10
-        end
+    values.inject(:+)
+  end
+
+  def ace_correction(total)
+    @hand.map(&:value).count('Ace').times do
+      if total > 21
+        total -= 10
       end
     end
-    values
+    total
   end
 
   def joinor(cards)
@@ -81,11 +90,11 @@ class Deck
             'Jack', 'Queen', 'King', 'Ace']
 
   def initialize
-    @cards = SUITS.map do |suit|
+    @cards = SUITS.flat_map do |suit|
       VALUES.map do |value|
         Card.new(value, suit)
       end
-    end.flatten(1)
+    end
     @cards.shuffle!
   end
 
@@ -142,20 +151,28 @@ class Game
     until @player.busted?
       answer = nil
       loop do
-        puts "Would you like to hit or stay? (h/s)"
-        answer = gets.chomp.downcase[0]
-        break if %w(h s).include?(answer[0])
+        answer = player_action
+        break if %w(h s).include?(answer)
         puts "Sorry, invalid response."
       end
       if answer == 's'
         @player.stay_output
         break
       elsif answer == 'h'
-        @player.hit_output
-        @player.hand << @deck.deal
+        player_hits
       end
       show_player_cards
     end
+  end
+
+  def player_action
+    puts "Would you like to hit or stay? (h/s)"
+    gets.chomp.downcase[0]
+  end
+
+  def player_hits
+    @player.hit_output
+    @player.hand << @deck.deal
   end
 
   def dealer_turn
@@ -166,9 +183,7 @@ class Game
       @dealer.hand << @deck.deal
       show_dealer_cards
     end
-    if @dealer.stay?
-      @dealer.stay_output
-    end
+    @dealer.stay_output if @dealer.stay?
   end
 
   def show_result
