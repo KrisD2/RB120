@@ -171,34 +171,45 @@ class TTTGame
 
   def play
     game_set_up
-
     loop do
-      loop do
-        clear_screen_and_display_board
-
-        loop do
-          current_player_moves
-          break if board.someone_won? || board.full?
-          clear_screen_and_display_board
-        end
-
-        increment_score
-        display_match_result
-        break if current_winning_score == SCORE_LIMIT
-        press_enter_to_start_next_match
-        reset_board
-      end
-      display_game_result
+      play_matches
       break unless play_again?
-      reset_score
-      reset_board
-      display_play_again_message
+      reset_for_next_game
     end
-
     display_goodbye_message
   end
 
   private
+
+  def play_matches
+    loop do
+      clear_screen_and_display_board
+      loop do
+        current_player_moves
+        break if board.someone_won? || board.full?
+        clear_screen_and_display_board
+      end
+      match_result
+      break if current_winning_score == SCORE_LIMIT
+      reset_for_next_match
+    end
+    display_game_result
+  end
+
+  def match_result
+    increment_score
+    display_match_result
+  end
+
+  def reset_for_next_game
+    reset_score
+    reset_board
+  end
+
+  def reset_for_next_match
+    press_enter_to_start_next_match
+    reset_board
+  end
 
   def press_enter_to_start_next_match
     puts "Press enter to start the next match."
@@ -255,17 +266,37 @@ class TTTGame
   end
 
   def computer_moves
-    if board[5].unmarked?
-      board[5] = computer.marker
+    if middle_square_free?
+      take_middle_square
     elsif !!board.find_at_risk_square(computer.marker)
-      offensive_square = board.find_at_risk_square(computer.marker)
-      board[offensive_square] = computer.marker
+      make_offensive_move
     elsif !!board.find_at_risk_square(human.marker)
-      defending_square = board.find_at_risk_square(human.marker)
-      board[defending_square] = computer.marker
+      make_defensive_move
     else
-    board[board.unmarked_keys.sample] = computer.marker
+      make_random_move
     end
+  end
+
+  def make_offensive_move
+    offensive_square = board.find_at_risk_square(computer.marker)
+    board[offensive_square] = computer.marker
+  end
+
+  def make_defensive_move
+    defending_square = board.find_at_risk_square(human.marker)
+    board[defending_square] = computer.marker
+  end
+
+  def make_random_move
+    board[board.unmarked_keys.sample] = computer.marker
+  end
+
+  def take_middle_square
+    board[5] = computer.marker
+  end
+
+  def middle_square_free?
+    board[5].unmarked?
   end
 
   def current_player_moves
@@ -337,11 +368,6 @@ class TTTGame
   def reset_score
     human.score = 0
     computer.score = 0
-  end
-
-  def display_play_again_message
-    puts "Let's play again!"
-    puts ""
   end
 end
 
